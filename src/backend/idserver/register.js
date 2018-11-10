@@ -1,8 +1,8 @@
 
 import axios from 'axios';
-import { RegisterData } from '@/model/RegisterData'
+import { RegisterData } from '@/models/RegisterData'
 
-export function register(registerData, url)
+export async function register(registerData, url)
 {
   const dtoIn = {
     firstName: registerData.firstName,
@@ -15,21 +15,18 @@ export function register(registerData, url)
     userNumber: registerData.userNumber
   };
 
-  return axios.post(url, dtoIn)
-  .then(response => response.data)
-  .then(dtoOut => {
-    const registerDataOut = new RegisterData();
-    registerDataOut.firstName = dtoOut.firstName;
-    registerDataOut.lastName = dtoOut.lastName;
-    registerDataOut.userName = dtoOut.userName;
-    registerDataOut.eMail = dtoOut.eMail;
-    registerDataOut.id = dtoOut.id;
-    registerDataOut.dateOfBirth = dtoOut.dateOfBirth;
-    registerDataOut.role = dtoOut.role;
-    registerDataOut.userNumber = dtoOut.userNumber;
-    return registerDataOut;
-  })
-  .catch(error => {
-    throw error;
-  });
+  const response = await axios.post(url, dtoIn);
+  const dtoOut = await response.data;
+
+  const registerDataOut = new RegisterData();
+  registerDataOut.firstName = dtoOut.firstName;
+  registerDataOut.lastName = dtoOut.lastName;
+  registerDataOut.userName = dtoOut.userName;
+  registerDataOut.eMail = dtoOut.eMail;
+  registerDataOut.id = dtoOut.id;
+  registerDataOut.dateOfBirth = dtoOut.dateOfBirth;
+  registerDataOut.role = dtoOut.role;
+  registerDataOut.userNumber = dtoOut.userNumber;
+
+  return registerDataOut;
 }

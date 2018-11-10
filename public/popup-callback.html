@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>SignIn Redirect Callback OIDC</title>
+</head>
+
+<body>
+  <script src="./js/oidc-client.min.js"></script>
+  <script>
+    new Oidc.UserManager({
+      userStore: new Oidc.WebStorageStateStore({ store: localStorage })
+    }).signinPopupCallback().then(function() {
+      //window.location = "index.html";
+    }).catch(function(e) {
+      console.error(e);
+      //window.location = "index.html";
+    });
+  </script>
+</body>
+
+</html>

@@ -1,34 +1,37 @@
 <template>
-  <v-layout row align-center justify-center :style="{border: '1px solid red'}">
-  <v-flex xs12 px-5>
-    
-  <div
-    v-for="item of itemsToDisplay"
-    :key="item.name"
+  <app-view-layout
+    :title="'Account Information'"
     >
-    <v-layout row justify-start wrap  mt-2>
-      <v-flex xs12 sm6 md4 offset-md2 text-xs-left caption> 
-        {{ item.name }}:
-      </v-flex>
-      <v-flex xs12 sm6 md4 text-xs-left :style="{color: $vuetify.theme.secondary}"> 
-        {{ item.value }}
-      </v-flex>
-    </v-layout>
-    <v-layout>
-      <v-flex xs12 sm12 md8 offset-md2>
-        <v-divider ></v-divider>
-      </v-flex>
-    </v-layout>
-  </div>
-
-  </v-flex>
-  </v-layout>
+    <div
+      v-for="item of itemsToDisplay"
+      :key="item.name"
+      >
+      <v-layout row justify-start wrap mt-2>
+        <v-flex xs12 sm6 md4 offset-md2 text-xs-left caption> 
+          {{ item.name }}:
+        </v-flex>
+        <v-flex xs12 sm6 md4 text-xs-left :style="{color: $vuetify.theme.secondary}"> 
+          {{ item.value }}
+        </v-flex>
+      </v-layout>
+      <v-layout>
+        <v-flex xs12 sm12 md8 offset-md2>
+          <v-divider ></v-divider>
+        </v-flex>
+      </v-layout>
+    </div>
+    
+  </app-view-layout>
 </template>
 
 <script>
 
+import ViewLayout from '@/components/layout/ViewLayout';
 
 export default {
+  components: {
+    'appViewLayout': ViewLayout
+  },
   props: {
     registerData: {
       type: Object,

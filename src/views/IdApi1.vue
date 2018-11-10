@@ -1,27 +1,35 @@
 <template>
-  <v-layout align-center justify-center>
-  <v-flex xs11 sm8 md7 lg6>
-    
-    <h3 class="text-xs-left">What can be done here?</h3>
-    <div :style="{
-      'border-top': '1px solid black',
-      'border-bottom': '1px solid black',
-      'padding-top': '1rem'
-      }"> 
+  <app-view-layout
+    :title="'What can be done here?'"
+    >
+    <div> 
       <p class="text-xs-left">
         This page provides access to some <a :href="idApiSwaggerUrl">API endpoints</a>.
-        Those enpoints require various kinds of authorization. If a user
+        Those endpoints require various kinds of authorization. If a user
         has access to an endpoint depends on the claims of a user
         and how the endpoint is secured. The endpoint can check the claims
         of the user by inspecting the access token (if any).
       </p>
     </div>
 
-    <div
-      :style="{'min-height': '2rem'}"
-      >
+    <app-view-spacer marginBottom="0.5rem"></app-view-spacer>
+
+    <div class="text-xs-left" :style="{position: 'relative'}">
       <slot name="infobar" />
+        
+      <div 
+          :style="{position: 'absolute', top: '50%', left: '95%' }"
+          >
+          <app-renew-action-item
+            :renewing="silentSignInOngoing"
+            :expired="expired"
+            :clicked="renewToken"
+            >
+          </app-renew-action-item>
+        </div>
     </div>
+
+    <app-view-spacer marginTop="0.5rem"></app-view-spacer>
 
     <app-api-elem
       v-for="actionInfo of actionInfos"
@@ -31,18 +39,24 @@
       >
     </app-api-elem>
    
-  </v-flex>
-  </v-layout>
+  </app-view-layout>
 </template>
 
 <script>
 
 import { TestApi } from '@/backend/IdApi1/TestApi';
+import { Paths } from '@/configuration/Paths'
 import ApiElem from '@/components/ApiElem';
+import ViewLayout from '@/components/layout/ViewLayout';
+import ViewSpacer from '@/components/layout/ViewSpacer';
+import RenewActionIcon from '@/components/common/RenewActionIcon';
 
 export default {
   components: {
     'appApiElem': ApiElem,
+    'appViewLayout': ViewLayout,
+    'appViewSpacer': ViewSpacer,
+    'appRenewActionItem': RenewActionIcon
   },
   props: {
     tokenInfo: {
@@ -63,8 +77,30 @@ export default {
         { name: 'UserNumberAtLeast20', desc: 'Token with UserNumber >= 20 claim' },
         { name: 'UserNumberAtLeast20AgeAtLeast18', desc: 'Token with UserNumber >= 20 and age >= 18 claim' }
       ],
-      testApi: new TestApi(process.env.VUE_APP_IDAPI1_URL_TESTAPI),
-      idApiSwaggerUrl: process.env.VUE_APP_IDAPI1_URL_SWAGGER
+      testApi: new TestApi(
+        Paths.testApi,
+        () => this.$store.dispatch('user/signInSilentIfAsync'),
+        () => this.$store.getters['user/accessToken']),
+      idApiSwaggerUrl: Paths.swagger
+    }
+  },
+  computed: {
+    silentSignInOngoing() {
+      return this.$store.getters['user/userLoginState'].silentSignInOngoing;
+    },
+    expired() {
+      return this.$store.getters['user/userLoginState'].accessTokenExpired;
+    }
+  },
+  methods: {
+    async renewToken() {
+      try {
+        await this.$store.dispatch('user/signInSilent');
+        this.init();
+      }
+      catch(error) {
+        // Nothing to do. Error is repored elsewhere.
+      }
     }
   }
 }

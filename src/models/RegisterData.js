@@ -9,9 +9,4 @@ export class RegisterData {
   password = '';
   role = '';
   userNumber = -1
-
-  RegisterData()
-  {
-
-  }
 }

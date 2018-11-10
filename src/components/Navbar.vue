@@ -6,7 +6,6 @@
     v-model="drawer"
     app
     disable-resize-watcher
-
     >
     <v-list dense>
       <template
@@ -16,6 +15,7 @@
           :key="item.title"
           :to="item.componentName ? {name: item.componentName} : null"
           @click="itemClicked(item)"
+          :color="item.errorColor ? item.errorColor : undefined"
           >
           <v-list-tile-action>
             <v-icon>{{ item.icon }}</v-icon>
@@ -25,13 +25,13 @@
           </v-list-tile-content>
         </v-list-tile>
         <v-divider
-          :key="item.title + item.title"
+          :key="item.title + '_2'"
           >
         </v-divider>
       </template>
     </v-list>
   </v-navigation-drawer>
-  <v-toolbar app flat dark>
+  <v-toolbar app flat dark dense>
 
     <v-toolbar-side-icon
       v-if="$vuetify.breakpoint.xsOnly"
@@ -57,9 +57,16 @@
       >
       <v-spacer></v-spacer>
       <v-toolbar-title
+        v-if="$vuetify.breakpoint.mdAndUp"
         :class="{'secondary--text': !nonNavRouteTitle}"
         >
         {{ nonNavRouteTitle ? nonNavRouteTitle : appTitle }}
+      </v-toolbar-title>
+      <v-toolbar-title
+        v-else
+        :class="{'secondary--text': !nonNavRouteTitle}"
+        >
+        {{ nonNavRouteTitle ? nonNavRouteTitle : '' }}
       </v-toolbar-title>
       <v-spacer></v-spacer>
     </template>
@@ -95,6 +102,7 @@
         :key="item.title"
         :to="item.componentName ? {name: item.componentName} : null"
         @click="itemClicked(item)"
+        :color="item.errorColor ? item.errorColor : undefined"
         >
         {{ item.title }}
       </v-btn>
@@ -123,12 +131,16 @@ export default {
     signOut: {
       type: Function,
       default: () => {}
+    },
+    signInError: {
+      type: Error,
+      default: null
     }
   },
   data() {
     return {
-      drawer: null,
-      appTitle: 'Vue OIDC Client'
+      drawer: false,
+      appTitle: 'Vue OIDC Client',
     }
   },
   methods: {
@@ -144,11 +156,12 @@ export default {
         return [
           { title: 'Info', componentName: 'info', func: null, icon: 'device_hub'},
           { title: 'IdApi1', componentName: 'idapi1', func: null, icon: 'vpn_key'},
+          { title: 'Settings', componentName: 'settings', func: null, icon: 'settings'}
         ];
       }
       else {
         return [
-          { title: 'Info', componentName: 'info', func: null, icon: 'device_hub'}
+          { title: 'Info', componentName: 'info', func: null, icon: 'device_hub'},
         ];
       }
     },
@@ -162,13 +175,14 @@ export default {
       else {
         return [
           { title: 'Register', componentName: 'register', func: null, icon: 'fingerprint'},
-          { title: 'Login', componentName: null, func: this.signIn, icon: 'person_outline'}
+          { title: 'Login', componentName: null, func: this.signIn, icon: 'person_outline',
+            errorColor: this.signInError && this.$vuetify.theme.error}
         ];
       }
     },
     nonNavItems() {
       return [
-        { title: 'Login or Register', componentName: 'loginregisterinfo', func: null, icon: null},
+        { title: '', componentName: 'loginregisterinfo', func: null, icon: null},
         { title: 'New User created', componentName: 'registersuccessfull', func: null, icon: null}
       ]
     },
@@ -191,7 +205,7 @@ export default {
     },
     nonNavRouteTitle() {
       for(const item of this.nonNavItems) {
-        if(item.componentName == this.$route.name) {
+        if(item.componentName == this.$route.name && item.title) {
           return item.title;
         }
       }

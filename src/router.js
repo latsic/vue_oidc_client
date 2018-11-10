@@ -5,12 +5,13 @@ import Register from './views/Register';
 import RegisterSuccessfull from './views/RegisterSuccessfull';
 import IdApi1 from './views/IdApi1';
 import LoginRegisterInfo from '@/views/LoginRegisterInfo';
-import { UserManager } from '@/backend/idserver/UserManager';
-
+import Settings from '@/views/Settings';
+import store from '@/store/store';
 Vue.use(Router)
 
 const router = new Router({
   mode: 'history',
+  base: process.env.BASE_URL,
   routes: [
     {
       path: '/index.html', redirect: { name: 'info' }
@@ -52,24 +53,40 @@ const router = new Router({
       path: '/loginregisterinfo',
       name: 'loginregisterinfo',
       component: LoginRegisterInfo
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: Settings
     }
   ]
 });
 
-
-router.beforeEach((to, from, next) => {
-  if(to.name == 'credentials' || to.name == 'idapi1') {
-    UserManager.instance.isUserSignedInAsync()
-    .then(isSignedIn => {
-      if(!isSignedIn) {
-        return next({ name: 'loginregisterinfo'})
+router.beforeEach(async (to, from, next) => {
+  
+  if(to.name == 'credentials' || to.name == 'idapi1' || to.name == 'settings') {
+    
+    const nextMove = () => {
+      if(!store.getters['user/signedIn']) {
+        return next({ name: 'loginregisterinfo'});
       }
-      return next(isSignedIn);
-    });
+      return next();
+    }
+
+    if(!store.getters['user/initialized']) {
+
+      const unWatchFn = store.watch(state => state.user.initialized, () => {
+        nextMove();
+        unWatchFn();
+      });
+    }
+    else {
+      nextMove();
+    }
   }
   else {
     next();
   }
-})
+});
 
 export default router;

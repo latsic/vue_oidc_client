@@ -1,20 +1,28 @@
 import oidcClient from 'oidc-client';
+import { Paths } from '@/configuration/Paths';
+import { OidcClientConfig } from '@/configuration/OidcClientConfig';
+import { RefreshStrategy } from '@/backend/idserver/RefreshStrategy';
 
 const config = {
+  
   userStore: new oidcClient.WebStorageStateStore({ store: localStorage }),
-  authority: process.env.VUE_APP_IDSERVER_URL_BASE,
-  client_id: "js",
-  redirect_uri: process.env.VUE_APP_IDSERVER_URL_CALLBACK_REDIRECT_URI,
-  response_type: "id_token token",
-  scope:"openid profile IdApi1 custom.profile",
-  post_logout_redirect_uri: process.env.VUE_APP_IDSERVER_URL_POST_LOGOUT_REDIRECT_URI,
-  silent_redirect_uri: process.env.VUE_APP_IDSERVER_URL_SILENT_REDIRECT_URI,
-  accessTokenExpiringNotificationTime: 60,
-  automaticSilentRenew: false
+
+  client_id: OidcClientConfig.clientId,
+  response_type: OidcClientConfig.responseType,
+  scope: OidcClientConfig.scope,
+  accessTokenExpiringNotificationTime: OidcClientConfig.accessTokenExpiringNotificationTime,
+
+  authority: Paths.idServer,
+  redirect_uri: Paths.callbackRedirect,
+  post_logout_redirect_uri: Paths.postLogoutRedirect,
+  silent_redirect_uri: Paths.silentRenewRedirect,
+  popup_redirect_uri: Paths.popupCallback,
+
+  automaticSilentRenew: false,
+  revokeAccessTokenOnSignout: true
 };
 
-oidcClient.Log.logger = console;
-oidcClient.Log.level = oidcClient.Log.INFO;
+initLogLevel(OidcClientConfig.logLevel);
 
 const singleton = Symbol();
 const singletonEnforcer = Symbol();
@@ -22,41 +30,293 @@ const singletonEnforcer = Symbol();
 export class UserManager {
 
   constructor(enforcer) {
-    if(enforcer != singletonEnforcer) throw 'Cannot construct Singleton!';
+    if(enforcer != singletonEnforcer) throw 'Cannot construct singleton!';
     
     this.mgr = new oidcClient.UserManager(config);
     this.accessTokenWillExpireSoon = false;
     this.accessTokenExpired = false;
+    this.tokenIssuedAt = null;
+    this.user = null;
+
+    this.accessTokenExpiredCb = null;
+    this.accessTokenExpiringCb = null;
+    this.userSignedOutCb = null;
+    this.signInSilentCb = null;
+    this.signedInSilentCb = null;
+    this.userLoadedCb = null;
+
+    this.refreshStrategy = RefreshStrategy.onDemandOnly;
+
+    const localStorageVal = localStorage.getItem('UserManger.RefreshStrategy');
+    if(localStorageVal != null) {
+      const localStorageValInt = Number.parseInt(localStorageVal, 10);
+      if(!Number.isNaN(localStorageValInt)) {
+        this.refreshStrategy = localStorageValInt;
+      }
+    }
   }
 
   static get instance() {
     if(!this[singleton]) {
       this[singleton] = new UserManager(singletonEnforcer);
+
+      this[singleton]._addAcessTokenExpiringCb();
+      this[singleton]._addAccessTokenExpiredCb();
+      this[singleton]._addUserSignedOutCb();
+      this[singleton]._addUserLoadedCb();
     }
     return this[singleton];
   }
 
-  signin() {
-    return this.mgr.signinRedirect()
-    .then(() => {
-      return true;
-    })
-    .catch(error => {
+  async init() {
+    this.user = await this.mgr.getUser();
+  }
+
+  getOidcUser() {
+    if(this.user == null) return null;
+    this._throwIfError(this.user);
+    return this.user;
+  }
+
+  getUserName(user = this.user) {
+    this._throwIfError(user);
+    if(!user.profile) return null;
+    if(user.profile.preferred_username) return user.profile.preferred_username;
+    return user.profile.name ? user.profile.name : null;
+  }
+
+  getUserAttribute(attributeName, user = this.user) {
+    this._throwIfError(user);
+    if(!user.profile || !user.profile[attributeName]) return null;
+    return user.profile[attributeName];
+  }
+
+  getAccessTokenExpiresInSeconds(user = this.user) {
+    this._throwIfError(user);
+    return user.expires_in;
+  }
+
+  getAccessTokenIssueTime() {
+    // seconds since midnight, 1 Jan 1970
+    if(!this.tokenIssuedAt) {
+      this.tokenIssuedAt = localStorage.getItem('UserManger.TokenIssuedAt');
+    }
+    return this.tokenIssuedAt;
+  }
+
+  getClockSkew() {
+    return this.mgr.settings._clockSkew;
+  }
+
+  getRefreshStrategy() {
+    return this.refreshStrategy;
+  }
+
+  async getAccessTokenAsync_RenewIfNeeded() {
+    return await this.getAccessTokenAsync(true);
+  }
+
+  async getAccessTokenAsync(ensureNotExpired) {
+    
+    if(ensureNotExpired && this.accessTokenWillExpireSoon || this.accessTokenExpired) {
+      this.user = await this.signInSilentAsync();
+    }
+    
+    this._throwIfError(this.user);
+    if(!this.user.access_token) {
+      throw new Error('No access token available');
+    }
+    return this.user.access_token;
+  }
+
+  getSignedInUser() {
+    if(this.user == null) return null;
+    this._throwIfError(this.user);
+    return this.user;
+  }
+
+  isUserSignedIn() {
+    if(this.user == null) return false;
+    this._throwIfError(this.user);
+    return true;
+  }
+
+  setRefreshStrategy(strategy) {
+
+    if(this.refreshStrategy == strategy) {
+      return;
+    }
+
+    switch(strategy) {
+      case RefreshStrategy.onDemandOnly:
+      case RefreshStrategy.onExpiring:
+      case RefreshStrategy.onExpired:
+      case RefreshStrategy.manualOnly:
+        break;
+      default:
+        throw new Error("[UserManager][setRefreshStrategy]: Invalid refresh strategy")
+    }
+
+    localStorage.setItem('UserManger.RefreshStrategy', strategy);
+    this.refreshStrategy = strategy;
+    this._silentSignInIfNeededAsync();
+  }
+
+  setClockSkew(clockSkew) {
+
+    if(clockSkew == this.mgr.settings._clockSkew) {
+      return;
+    }
+
+    this.mgr.settings._clockSkew = clockSkew;
+    // localStorage.setItem('UserManger.ClockSkew', clockSkew);
+  }
+
+  setUserLoadedCb(userLoadedCb) {
+    this.userLoadedCb = userLoadedCb;
+  }
+
+  setUserSignedOutCb(userSignedOutCb) {
+    this.userSignedOutCb = userSignedOutCb;
+  }
+
+  setSignInSilentCb(signInSilentCb) {
+    this.signInSilentCb = signInSilentCb;
+  }
+
+  setSignedInSilentCb(signedInSilentCb) {
+    this.signedInSilentCb = signedInSilentCb;
+  }
+
+  setAccessTokenExpiredCb(accessTokenExipredCb) {
+    this.accessTokenExpiredCb = accessTokenExipredCb;
+  }
+
+  setAccessTokenExpiringCb(accessTokenExpiringCb) {
+    this.accessTokenExpiring = accessTokenExpiringCb;
+  }
+
+  async signInAsync() {
+    if(OidcClientConfig.usePopup) {
+      await this.mgr.signinPopup();
+    }
+    else {
+      await this.mgr.signinRedirect();
+    }
+  }
+
+  async signOutAsync() {
+    await this.mgr.signoutRedirect();
+  }
+
+  async signInSilentAsync(onlyIfAccessTokenExpiresOrExpired = false) { 
+
+    if(onlyIfAccessTokenExpiresOrExpired &&
+      !this.accessTokenWillExpireSoon &&
+      !this.accessTokenExpired) {
+      
+      return;
+    }
+
+    await this._signInSilentAsync();
+  }
+
+  async signInSilentIfAsync() {
+  
+    if(this.refreshStrategy != RefreshStrategy.manualOnly &&
+       (this.accessTokenWillExpireSoon || this.accessTokenExpired)) {
+
+      await this._signInSilentAsync();
+    }
+  }
+
+  async _silentSignInIfNeededAsync() {
+
+    if((this.accessTokenWillExpireSoon &&
+        this.refreshStrategy == RefreshStrategy.onExpiring) ||
+       (this.accessTokenExpired && 
+        (this.refreshStrategy == RefreshStrategy.onExpired ||
+         this.refreshStrategy == RefreshStrategy.onExpiring))) {
+
+      await this._signInSilentAsync();
+    }
+  }
+
+  async _signInSilentAsync() { 
+
+    if(this.signInSilentCb) this.signInSilentCb();
+
+    try {
+      this.user = await this.mgr.signinSilent();
+      this._throwIfError(this.user);
+      // eslint-disable-next-line no-console
+      console.log('[UserManager][signInSilent][success][user]', this.user);
+      this.accessTokenWillExpireSoon = false;
+      this.accessTokenExpired = false;
+      if(this.signedInSilentCb) this.signedInSilentCb(null);
+      this._updateTokenIssuedAt();
+    }
+    catch(error) {
+      // eslint-disable-next-line no-console
+      console.log('[UserManager][signInSilent][error][user]', error);
+      this.signedInSilentCb(error);
       throw error;
+    }
+  }
+
+  _addUserLoadedCb() {
+    this.mgr.events.addUserLoaded(user => {
+      // eslint-disable-next-line no-console
+      console.log('[UserManager][UserLoadedCb][user]', user);
+      this.user = user;
+      this._updateTokenIssuedAt();
+      if(this.userLoadedCb) this.userLoadedCb();
     });
   }
 
-  signout() {
-    return this.mgr.signoutRedirect()
-    .then(() => {
-      return true;
-    })
-    .catch(error => {
-      throw error;
-    })
+  _addUserSignedOutCb() {
+    this.mgr.events.addUserSignedOut(() => {
+      // eslint-disable-next-line no-console
+      console.log('[UserManager][UserSignedOutCb]');
+      this.mgr.removeUser()
+      .finally(() => {
+        this.user = null;
+        if(this.userSignedOutCb) this.userSignedOutCb();
+      });
+    });
   }
 
-  throwIfError(user) {
+  _addAccessTokenExpiredCb() {
+    this.mgr.events.addAccessTokenExpired(() => {
+      // eslint-disable-next-line no-console
+      console.log('[UserManager][AccessTokenExpiredCb]');
+      if(this.accessTokenExpiredCb) this.accessTokenExpiredCb();
+      switch(this.refreshStrategy) {
+        case RefreshStrategy.onExpired:
+          this.signInSilentAsync();
+          break;
+        default:
+          this.accessTokenExpired = true;
+      }
+    });
+  }
+
+  _addAcessTokenExpiringCb() {
+    this.mgr.events.addAccessTokenExpiring(() => {
+      // eslint-disable-next-line no-console
+      console.log('[UserManager][AcessTokenExpiringCb]');
+      if(this.accessTokenExpiringCb) this.accessTokenExpiringCb();
+      switch(this.refreshStrategy) {
+        case RefreshStrategy.onExpiring:
+          this.signInSilentAsync();
+          break;
+        default:
+          this.accessTokenWillExpireSoon = true;
+      }
+    });
+  }
+
+  _throwIfError(user) {
     if(user instanceof Error) {
       throw user;
     }
@@ -65,161 +325,28 @@ export class UserManager {
     }
   }
 
-  getSignedInUserAsync() {
-    return this.mgr.getUser()
-    .then(user => {
-      if(user == null) return null;
-      this.throwIfError(user);
-      return user;
-    })
-    .catch(error => {
-      throw error;
-    });
+  _updateTokenIssuedAt() {
+    this.tokenIssuedAt = Date.now() / 1000;
+    if(localStorage.setItem('UserManger.TokenIssuedAt', this.tokenIssuedAt));
   }
+}
 
-  isUserSignedInAsync() {
-    return this.mgr.getUser()
-    .then(user => this.isUserSignedIn(user))
-    .catch(error => {
-      throw error;
-    });
+function initLogLevel(logLevel)
+{
+  if(logLevel == "error") {
+    oidcClient.Log.logger = console;
+    oidcClient.Log.level = oidcClient.Log.ERROR;
   }
-
-  isUserSignedIn(user) {
-    if(user == null) return false;
-    this.throwIfError(user);
-    return true;
+  else if(logLevel == "info") {
+    oidcClient.Log.logger = console;
+    oidcClient.Log.level = oidcClient.Log.INFO;
   }
-
-  getUserNameAsync() {
-    return this.mgr.getUser()
-    .then(user => this.getUserName(user));
+  else if(logLevel == "debug") {
+    oidcClient.Log.logger = console;
+    oidcClient.Log.level = oidcClient.Log.DEBUG;
   }
-
-  getUserName(user) {
-    this.throwIfError(user);
-    if(!user.profile) return null;
-    if(user.profile.preferred_username) return user.profile.preferred_username;
-    return user.profile.name ? user.profile.name : null;
-  }
-
-  getUserEmailAsync() {
-    return this.mgr.getUser()
-    .then(user => this.getUserEmail(user));
-  }
-
-  getUserEmail(user) {
-    this.throwIfError(user);
-    if(!user.profile.email) return null;
-    return user.profile.email;
-  }
-
-  getAttribute(user, attributeName) {
-    this.throwIfError(user);
-    if(!user.profile || !user.profile[attributeName]) return null;
-    return user.profile[attributeName];
-  }
-
-  getAccessTokenExpiresInSecondsAsync() {
-    return this.mgr.getUser()
-    .then(user => this.getAccessTokenExpiresInSeconds(user));
-  }
-
-  getAccessTokenExpiresInSeconds(user) {
-    this.throwIfError(user);
-    return user.expires_in;
-  }
-
-  setAccessTokenExpiredCb(accessTokenExpiredCb) {
-    this.accessTokenExpiredCb = accessTokenExpiredCb;
-    this.mgr.events.addAccessTokenExpired(() => {
-      // eslint-disable-next-line no-console
-      console.log('[UserManager][mgr.AccessTokenExpiredCb]');
-      this.accessTokenExpired = true;
-      if(this.accessTokenExpiredCb) this.accessTokenExpiredCb();
-    });
-  }
-
-  setAcessTokenExpiringCb(accessTokenExpiringCb) {
-    this.accessTokenExpiringCb = accessTokenExpiringCb;
-    this.mgr.events.addAccessTokenExpiring(() => {
-      // eslint-disable-next-line no-console
-      console.log('[UserManager][mgr.AcessTokenExpiringCb]');
-      this.accessTokenWillExpireSoon = true;
-
-      if(this.accessTokenExpiringCb) this.accessTokenExpiringCb();
-    });
-  }
-
-  signInSilent() {
-    if(this.signInSilentCb) this.signInSilentCb();
-    return this.mgr.signinSilent()
-    .then(user => {
-      this.throwIfError(user);
-      // eslint-disable-next-line no-console
-      console.log('[UserManager][signInSilent][success][user]', user);
-      this.accessTokenWillExpireSoon = false;
-      this.accessTokenExpired = false;
-      if(this.signedInSilentCb) this.signedInSilentCb(user);
-      return user;
-    });
-  }
-
-  getAccessTokenAsync() {
-    if(this.accessTokenWillExpireSoon || this.accessTokenExpired) {
-      return this.signInSilent()
-      .then(user => {
-        this.throwIfError(user);
-        if(!user.access_token) {
-          throw new Error('No access token available');
-        }
-        return user.access_token;
-      });
-    }
-    return this.mgr.getUser()
-    .then(user => {
-      this.throwIfError(user);
-      if(!user.access_token) {
-        throw new Error('No access token available');
-      }
-      return user.access_token;
-    })
-    .catch(error => {
-      throw error;
-    });
-  }
-
-  getClockSkew() {
-    return this.mgr.settings._clockSkew;
-  }
-
-  setAddUserSignedOutCb(userSignedOutCb) {
-    this.userSignedOutCb = userSignedOutCb;
-    this.mgr.events.addUserSignedOut(() => {
-      // eslint-disable-next-line no-console
-      console.log('[UserManager][mgr.UserSignedOutCb]');
-      this.mgr.removeUser()
-      .then(() => {
-        if(this.userSignedOutCb) this.userSignedOutCb();
-      });
-    });
-  }
-
-  setUserLoadedCb(userLoadedCb) {
-    this.userLoadedCb = userLoadedCb;
-    this.mgr.events.addUserLoaded(user => {
-      // eslint-disable-next-line no-console
-      console.log('[UserManager][mgr.UserLoadedCb][user]', user);
-      
-      if(this.userLoadedCb) this.userLoadedCb();
-    });
-  }
-
-  setSignedInSilentCb(signedInSilentCb) {
-    this.signedInSilentCb = signedInSilentCb;
-  }
-
-  setSignInSilentCb(signInSilentCb) {
-    this.signInSilentCb = signInSilentCb;
+  else if(logLevel == "warn") {
+    oidcClient.Log.logger = console;
+    oidcClient.Log.level = oidcClient.Log.WARN;
   }
 }

@@ -1,44 +1,144 @@
 <template>
-  <v-layout align-center justify-center>
-  <v-flex xs12 sm10 md8 lg6>
-  <div :style="{'margin-left': '1rem'}">
-    <br>
+  <app-view-layout
+    :title="'Credentials'"
+    >
+   
     <div>
-      <p class="text-xs-left textprops mb-0">Username: {{ userName ? userName : 'unknown' }}</p>
-      <p class="text-xs-left textprops mb-0">Email: {{ email ? email : 'unknown' }}</p>
-      <p class="text-xs-left textprops mb-0"
+      <text-line :title="'Username'" :value="userName"></text-line>       
+      <text-line
         v-for="otherAttribute of otherAttributes"
         :key="otherAttribute.name"
+        :title="otherAttribute.name"
+        :value="otherAttribute.value"
         >
-        {{ otherAttribute.name }}: {{ otherAttribute.value }}
-      </p>
+      </text-line>       
     </div>
-    <div class="spacer">
-      <p class="text-xs-left textprops mb-0">Login At: {{ loginAt }}</p>
-      <p class="text-xs-left textprops mb-0">Access Token Expires in: {{ accessTokenExpiresInSeconds }} seconds</p>
-      <p class="text-xs-left textprops mb-0">Clock Skew: {{ clockSkew  }} seconds</p>
+
+    <div v-if="loginAt">
+      <app-view-spacer></app-view-spacer>
+      <text-line :title="'Login at'" :value="loginAt"></text-line>
     </div>
-    <div class="spacer">
-      <p class="text-xs-left textprops mb-0">All claims inside Id token:</p>
+
+    <div v-if="hasAccessToken">
+      <app-view-spacer></app-view-spacer>
+      <text-line :title="'Latest access token issued at'" :value="accessTokenIssuedAt"></text-line>
+      <text-line
+        :title="`Access token expire${accessTokenExpiresInSeconds > 0 ? 's' : 'd' } at`"
+        :value="accessTokenExpiresAt"
+        >
+      </text-line>
+      <text-line
+        :title="`Access token expire notification time`"
+        :value="accessTokenExpireNotificationTime + ' [s]'"
+        >
+      </text-line>
+      <div>
+      
+      <div :style="{position: 'relative'}">
+        <div
+          v-if="!showError"
+          :key="'noError'"
+          >
+          <text-line
+            v-if="accessTokenExpiresInSeconds >= 0"
+            :title="'Access token expires in'"
+            :value="accessTokenExpiresInSeconds + ' [s]'"
+            >
+            Access token expires in: {{ accessTokenExpiresInSeconds }} seconds
+          </text-line>
+          <text-line
+            v-else
+            :title="'Access token expired since'"
+            :value="accessTokenExpiresInSeconds + ' [s]'"
+            :style="{color: $vuetify.theme.secondary}"
+            >
+          </text-line>
+        </div>
+        <div
+          v-else
+          :key="'error'"
+          >
+          <transition  name="renew-error" appear v-on:after-enter="afterEnter"> 
+            <div 
+              :key="'error'"
+              >
+              <text-line
+                :title="'Error renewing access token'"
+                :value="silentSignInError && silentSignInError.message ? silentSignInError.message : ''"
+                :style="{color: $vuetify.theme.error}"
+                >
+              </text-line>
+            </div>
+          </transition>
+        </div>
+        
+        <div 
+          :style="{position: 'absolute', top: '50%', left: '95%' }"
+          >
+          <app-renew-action-item
+            :renewing="silentSignInOngoing"
+            :expired="accessTokenExpiresInSeconds < 0"
+            :clicked="renewToken"
+            >
+          </app-renew-action-item>
+        </div>
+      </div>
+      
+      
+      </div>
+      <!-- <text-line :title="'Clock skew'" :value="clockSkew + ' [s]'"></text-line> -->
+    </div>
+
+    <div>
+      <app-view-spacer></app-view-spacer>
+      <text-line :title="'All claims inside Id token'" :hideIfNoValue="false"></text-line>
       <pre class="textprops text-xs-left">{{ idTokenClaims }}</pre>
     </div>
-    <div class="spacer">
-      <p class="text-xs-left textprops mb-0">Other available info:</p>
+    <div>
+      <app-view-spacer></app-view-spacer>
+      <text-line :title="'Other available info'" :hideIfNoValue="false"></text-line>
       <pre class="textprops text-xs-left">{{ userInfo }}</pre>
     </div>
-  </div>
-  </v-flex>
-  </v-layout>
+   
+  </app-view-layout>
 </template>
 
 <script>
   
-import { UserManager } from '@/backend/idserver/UserManager'
+// import { UserManager } from '@/backend/idserver/UserManager';
+import ViewLayout from '@/components/layout/ViewLayout';
+import ViewSpacer from '@/components/layout/ViewSpacer';
+import Spinner from '@/components/common/Spinner';
+import RenewActionIcon from '@/components/common/RenewActionIcon';
+import { OidcClientConfig } from '@/configuration/OidcClientConfig';
 
-export default {
+const TextLine = {
+  props: {
+    title:{type: String, default: ''},
+    value:{type: String | Number, default: ''},
+    hideIfNoValue:{type: Boolean, default: true},
+    clicked:{type: Function, default: () => {}}
+  },
+  render() {
+    if(!this.value && this.hideIfNoValue) return null;
+    return (
+      <p onClick={this.clicked} class="text-xs-left textprops mb-0">{this.title}: {this.value}</p>
+    );
+  } 
+};
+
+export default {  
+
+  components: {
+    'appViewLayout': ViewLayout,
+    'appViewSpacer': ViewSpacer,
+    'textLine': TextLine,
+    'appSpinner': Spinner,
+    'appRenewActionItem': RenewActionIcon
+  },
   data() {
     return {
-      userManager: UserManager.instance,
+      //userManager: UserManager.instance,
       credentials: '',
       idTokenClaims: '',
       userInfo: '',
@@ -46,74 +146,124 @@ export default {
       userName: null,
       email: null,
       otherAttributes: [],
-      clockSkew : null,
+      // clockSkew : null,
+      accessTokenIssuedAt: '',
+      accessTokenExpiresAt: '',
+      accessTokenExpiresInSeconds: null,
+      hasAccessToken: false,
       loginAt: '',
-      accessTokenExpiresInSeconds: null
+      iconName: 'refresh',
+      renewing: false,
+      showError: false
+    }
+  },
+  computed: {
+    user() {
+      return this.$store.getters['user/oidcUser'];
+    },
+    silentSignInOngoing() {
+      return this.$store.getters['user/userLoginState'].silentSignInOngoing;
+    },
+    silentSignInError() {
+      return this.$store.getters['user/userLoginState'].silentSignInError;
+    },
+    accessTokenExpireNotificationTime() {
+      return OidcClientConfig.accessTokenExpiringNotificationTime;
+    },
+  },
+  watch: {
+    user() {
+      this.init();
+    },
+    silentSignInError(newVal) {
+      if(newVal != null) {
+        this.showError = true;
+      }
+      else {
+        this.showError = false;
+      }
     }
   },
   methods: {
-
+    async renewToken() {
+      try {
+        await this.$store.dispatch('user/signInSilent');
+        this.init();
+      }
+      catch(error) {
+        // Nothing to do. Error is repored elsewhere.
+      }
+    },
     setIdTokenClaims(user) {
       this.idTokenClaims = '';
       if(!user || ! user.profile) return;
 
-      const d = new Date(Date.UTC(1970, 0, 1, 0, 0, 0, 0));
-      d.setSeconds(user.profile.auth_time);
-
-      const userProfile = {
-        ...user.profile,
-        auth_time: d.toLocaleString()
-      }
-
+      const userProfile = { ...user.profile };
       this.idTokenClaims = JSON.stringify(userProfile, null, 2);
     },
-
+    convertToLocalDateString(timeInSeconds) {
+      const d = new Date(0);
+      d.setSeconds(timeInSeconds);
+      return d.toLocaleString();
+    },
     setUserInfo(user) {
       this.userInfo = '';
       if(!user) return;
       
-      const d = new Date(Date.UTC(1970, 0, 1, 0, 0, 0, 0));
-      d.setSeconds(user.expires_at);
+      if(user.profile) {
+        this.loginAt = this.convertToLocalDateString(user.profile.auth_time);
+      }
+      if(user.access_token) {
+        this.hasAccessToken = true;
+      }
+      this.accessTokenExpiresAt = this.convertToLocalDateString(user.expires_at);
+      
+      const issuedAtInSeconds = this.$store.getters['user/accessTokenIssueTime'];
+      if(issuedAtInSeconds) {
+        this.accessTokenIssuedAt = this.convertToLocalDateString(issuedAtInSeconds)
+      }
 
-      const userNoProfile = {
-        ...user,
-        expires_at: d.toLocaleString()
-      };
+      const userNoProfile = { ...user };
       delete userNoProfile.profile;
       this.userInfo = JSON.stringify(userNoProfile, null, 2);
-
-      this.loginAt = d.toLocaleString();
     },
-  },
-  created() {
-
-    this.userManager.getSignedInUserAsync()
-    .then(user => {
+    init() {
       
-      this.clockSkew = this.userManager.getClockSkew();
-      this.setIdTokenClaims(user);
-      this.setUserInfo(user);
+      // this.clockSkew = this.$store.getters['settings/clockSkew'];
+      this.setIdTokenClaims(this.user);
+      this.setUserInfo(this.user);
 
-      if(!this.userManager.isUserSignedIn(user)) {
+      if(!this.$store.getters['user/signedIn']) {
         return;
       }
-      this.userName = this.userManager.getUserName(user);
-      this.email = this.userManager.getUserEmail(user);
-
-      const attributeName = ['role', 'birthdate', 'UserNumber'];
-      attributeName.forEach(name => {
-        const value = this.userManager.getAttribute(user, name);
+      this.userName = this.$store.getters['user/userName'];
+      
+      this.otherAttributes = [];
+      const attributeNames = ['email', 'role', 'birthdate', 'UserNumber'];
+      attributeNames.forEach(name => {
+        const value = this.$store.getters['user/userAttribute'](name);
         if(value) this.otherAttributes.push({name, value});
       });
 
-      this.accessTokenExpiresInSeconds = this.userManager.getAccessTokenExpiresInSeconds(user);
-       this.intervalFunc = setInterval(() => {
-        this.accessTokenExpiresInSeconds = this.userManager.getAccessTokenExpiresInSeconds(user)
-      }, 5000);
-    });
+      const updateLoginState = () => {
+        this.$store.dispatch('user/updateLoginState');
+        this.accessTokenExpiresInSeconds = this.$store.getters['user/accessTokenExpiresInSeconds'];
+      }
+
+      if(this.intervalFunc) clearInterval(this.intervalFunc);
+      updateLoginState();
+      this.intervalFunc = setInterval(updateLoginState, 1000); 
+    },
+    afterEnter() {
+      this.showError = false;
+    }
+  },
+  created() {
+    this.init();
   },
   beforeDestroy() {
     if(this.intervalFunc) clearInterval(this.intervalFunc);
+    this.intervalFunc = null;
   }
 
 }
@@ -126,10 +276,19 @@ export default {
     text-overflow: ellipsis;
     text-align: 'left';
   }
-  .spacer {
-    border-top: 1px solid black;
-    padding-top: 1rem;
-    margin-top: 1rem;
-    margin-right: 1rem;
+
+  .renew-error-enter {
+    opacity: 1;
+  }
+  .renew-error-enter-to {
+    opacity: 0.0;
+  }
+  .renew-error-enter-active {
+    transition: opacity 4s ease-in;
+  }
+  .renew-error-leave,
+  .renew-error-leave-active {
+    transition: opacity 0s;
+    opacity: 0;
   }
 </style>

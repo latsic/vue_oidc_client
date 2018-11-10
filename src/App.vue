@@ -9,29 +9,23 @@
     <div id="nav">
            
       <app-navbar
-        :userName="userName"
-        :isSignedIn="signedIn"
-        :signIn="signin"
-        :signOut="signout"
+        :userName="$store.getters['user/userName']"
+        :isSignedIn="$store.getters['user/signedIn']"
+        :signIn="signInAsync"
+        :signOut="signOutAsync"
+        :signInError="$store.getters['user/signInRedirectError']"
         >
       </app-navbar>
     </div>
     
     <router-view>
-      <div
+      <app-access-token-info
+        :userLoginState="$store.getters['user/userLoginState']"
+        :requestUpdate="updateLoginState"
+        :clockSkew="this.$store.getters['settings/clockSkew']"
         slot="infobar"
-        :style="{margin: '0', padding: '0'}"
         >
-        <p
-          v-if="silentSignInOngoing"
-          :style="{
-            'z-index': 1000,
-            margin: '0', padding: '0',
-            color: $vuetify.theme.primary}"
-          >
-          Getting new Access Token from {{ idServerUrl }}
-        </p>
-      </div>
+      </app-access-token-info>
     </router-view>
 
     </v-flex>
@@ -43,90 +37,49 @@
 </template>
 
 <script>
-  import { UserManager } from "@/backend/idserver/UserManager";
   import Navbar from '@/components/Navbar';
-
+  import AccessTokenInfo from '@/components/AccessTokenInfo';
+  
   export default {
     components: {
-      'appNavbar': Navbar
+      'appNavbar': Navbar,
+      'appAccessTokenInfo': AccessTokenInfo
     },
     data() {
       return {
-        signedIn: false,
-        userManager: UserManager.instance,
-        userName: "",
-        silentSignInOngoing: false,
-        idServerUrl: process.env.VUE_APP_IDSERVER_URL_BASE
       };
     },
     methods: {
-      signin() {
-        this.userManager.signin();
+      async signInAsync() {
+        await this.$store.dispatch('user/signIn');
       },
-      signout() {
-        this.signedIn = false;
-        this.userManager.signout();
+      async signOutAsync() {
+        await this.$store.dispatch('user/signOut');
       },
-      updateUserState() {
-        this.userManager.getSignedInUserAsync().then(user => {
-          this.signedIn = this.userManager.isUserSignedIn(user);
-          if (!this.signedIn) return;
-
-          this.userName = this.userManager.getUserName(user);
-          if (!this.userName) this.userManager.getUserEmail(user);
-        });
-      },
-      accessTokenExpired() {
-        // eslint-disable-next-line no-console
-        console.log("[App.vue][accessTokenExpired]");
-      },
-      accessTokenExpiring() {
-        // eslint-disable-next-line no-console
-        console.log("[App.vue][accessTokenExpiring]");
-      },
-      userLoaded() {
-        // eslint-disable-next-line no-console
-        console.log("[App.vue][userLoaded]");
-        this.updateUserState();
-      },
-      userSignedOut() {
-        // eslint-disable-next-line no-console
-        console.log("[App.vue][userSignedOut]");
-        this.updateUserState();
-      },
-      signInSilent() {
-        // eslint-disable-next-line no-console
-        console.log("[App.vue][signInSlient]");
-        this.silentSignInOngoing = true;
-      },
-      signedInSlient(user) {
-        // eslint-disable-next-line no-console
-        console.log("[App.vue][signedInSlient][user]", user);
-        this.silentSignInOngoing = false;
+      updateLoginState() {
+        this.$store.dispatch('user/updateLoginState');
       }
     },
     created() {
-      this.userManager.setAccessTokenExpiredCb(this.accessTokenExpired);
-      this.userManager.setAcessTokenExpiringCb(this.accessTokenExpiring);
-      this.userManager.setAddUserSignedOutCb(this.userSignedOut);
-      this.userManager.setUserLoadedCb(this.userLoaded);
-      this.userManager.setSignedInSilentCb(this.signedInSlient);
-      this.userManager.setSignInSilentCb(this.signInSilent);
-      this.updateUserState();
+      this.$store.dispatch('user/init');
+      this.$store.dispatch('settings/init')
     }
   };
 </script>
 
 
 <style>
-#app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+  #app {
+    font-family: "Avenir", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    color: #2c3e50;
+    
+    /* margin-top: 60px; */
+  }
+  html {
+    overflow-y: auto;
+  }
   
-  /* margin-top: 60px; */
-}
-html { overflow-y: auto; }
 </style>

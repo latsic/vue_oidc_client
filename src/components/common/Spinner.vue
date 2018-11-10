@@ -1,5 +1,5 @@
 <template>
-  <div class="sk-fading-circle">
+  <div class="sk-fading-circle" :style="cssProps">
     <div class="sk-circle1 sk-circle"></div>
     <div class="sk-circle2 sk-circle"></div>
     <div class="sk-circle3 sk-circle"></div>
@@ -17,7 +17,18 @@
 
 <script>
 export default {
-  
+  props: {
+    color: {
+      type: String,
+      default: '#333'
+    }
+  },
+  computed: {
+    cssProps() { return {
+      '--bg-color': this.color
+      }
+    }
+  }
 }
 </script>
 
@@ -44,7 +55,7 @@ export default {
     margin: 0 auto;
     width: 15%;
     height: 15%;
-    background-color: #333;
+    background-color: var(--bg-color);
     border-radius: 100%;
     -webkit-animation: sk-circleFadeDelay 1.2s infinite ease-in-out both;
             animation: sk-circleFadeDelay 1.2s infinite ease-in-out both;

@@ -7,44 +7,39 @@
           :clicked="() => apiCall(actionInfo.name)"
           :disabled="false"
           :showResultIndicator="true"
+          :marginLeft="'0'"
           >
         </app-action-button>
       </v-flex>
       <v-flex
         :style="{color: $vuetify.theme.primary}"
-        xs12 sm12 text-xs-left pl-2 caption>
+        xs12 sm12 text-xs-left caption>
         Requirements: {{ actionInfo.desc }}
       </v-flex>
-      <!-- <div v-if="isResultSuccess()" :style="{'margin-left': '0.5rem'}">
-        <p class="text-xs-left caption mb-0">Access Requirements: {{ apiResult.success.accessRequirement}}</p>
-        <p class="text-xs-left caption">Claims needed: {{ apiResult.success.claimsNeeded}}</p>
-      </div> -->
       <v-flex
         text-xs-left
-        pl-2
         caption
         >
         <span>Result Info: </span>
-        <span v-bind="getColor()">
-        {{ isResultError() ? apiResult.error.message : (isResultSuccess() ? 'Success' : '') }}
-        </span>
-        <span v-if="apiResult.duration != 0">
-          | Duration: {{ apiResult.duration }}[ms]
+        <span
+          :style="{opacity: apiCallOngoing ? 0.2 : 1.0}"
+          >
+          <span v-bind="getColor()">
+          {{ isResultError() ? apiResult.error.message : (isResultSuccess() ? 'Success' : '') }}
+          </span>
+          <span v-if="apiResult.duration != 0">
+            | Duration: {{ apiResult.duration }}[ms]
+          </span>
         </span>
       </v-flex>
-
-      <!-- <div v-if="isResultError()" :style="{'margin-left': '0.5rem', color: 'error'}">
-        <p class="text-xs-left" :style="{color: $vuetify.theme.error}" >Error: {{ apiResult.error.message}}</p>
-      </div> -->
-      
      
     </v-layout>
-    <v-divider xs12 sm6></v-divider>
+    <v-divider></v-divider>
     </div>
 </template>
 
 <script>
-import ActionButton from '@/components/ActionButton';
+import ActionButton from '@/components/common/ActionButton';
 
 export default {
   components: {
@@ -63,7 +58,8 @@ export default {
   data(){
     return {
       apiResult: this.initResult(),
-      accessToken: ''
+      accessToken: '',
+      apiCallOngoing: false
     }
   },
   methods: {
@@ -72,7 +68,6 @@ export default {
       return this.apiResult.success.accessRequirement != '';
     },
     isResultError() {
-      // console.log('isResultError', this.apiResult.error.message == true);
       return this.apiResult.error.message != '';
     },
     initResult() {
@@ -88,6 +83,7 @@ export default {
       }
     },
     getColor() {
+
       if(this.isResultSuccess()) {
         return {
           style: {
@@ -109,6 +105,7 @@ export default {
       const start = Date.now();
 
       let resultPromise;
+      this.apiCallOngoing = true;
       if(actionName == 'Everybody') {
         resultPromise = this.apiAccess.get(actionName, false);
       }
@@ -126,6 +123,7 @@ export default {
       })
       .finally(() => {
         this.apiResult.duration = Date.now() - start;
+        this.apiCallOngoing = false;
       });
       
       return resultPromise;

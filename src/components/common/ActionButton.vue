@@ -8,6 +8,7 @@
           :style="{position: 'relative'}"
           >
           <v-btn
+            :style="{'margin-left': marginLeft ? marginLeft : null}"
             small
             :disabled="iconName != 'none' || disabled"
             @click="onClick"
@@ -16,7 +17,7 @@
             {{ buttonText }}
           </v-btn>
 
-          <!-- Aboslute positioned box directly left of the button,
+          <!-- Aboslute positioned box directly right of the button,
                it is centered absolute so it does not affect the flow
                of the page. -->
           <span
@@ -88,6 +89,10 @@ export default {
     showResultIndicator: {
       type: Boolean,
       default: true
+    },
+    marginLeft: {
+      type: String,
+      default: ''
     }
   },
   data() {

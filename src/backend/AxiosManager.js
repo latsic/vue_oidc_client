@@ -11,7 +11,7 @@ export class AxiosManager {
     if(enforcer != singletonEnforcer) throw 'Cannot construct Singleton!';
     
     this.axiosInstances = new Map();
-    this.axiosInstancesSpecial = new Map();
+    this.axiosInstances2 = new Map();
   }
 
   static get instance() {
@@ -28,12 +28,17 @@ export class AxiosManager {
   addInterceptor(url, tokenPromiseFn) {
 
     const elem = this.axiosInstances.get(url);
+
+    if(elem.interceptor != null) {
+      elem.axiosInstance.interceptors.request.eject(elem.interceptor)
+      elem.interceptor = null;
+    }
+
     if(elem && elem.interceptor == null) {
       elem.interceptor = elem.axiosInstance.interceptors.request.use(config => {
         return tokenPromiseFn()
         .then(token => {
           config.headers.Authorization = `Bearer ${token}`;
-          //return Promise.resolve(config);
           return Promise.resolve(config);
         })
         .catch(error => {
@@ -69,8 +74,8 @@ export class AxiosManager {
     return this._getAxiosInstance(url, this.axiosInstances);
   }
 
-  getAxiosInstanceSpecial(url) {
-    return this._getAxiosInstance(url, this.axiosInstancesSpecial);
+  getAxiosInstance2(url) {
+    return this._getAxiosInstance(url, this.axiosInstances2);
   }
 
   addAxiosInstance(url) {
