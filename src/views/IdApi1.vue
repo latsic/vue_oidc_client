@@ -68,14 +68,14 @@ export default {
     return {
       actionInfos: [
         { name: 'Everybody', desc: 'No token needed' },
-        { name: 'EverybodyWithAToken', desc: 'Token, but no claims needed' },
-        { name: 'AgeAtLeast16', desc: 'Token with age >= 16 claim' },
-        { name: 'AgeAtLeast18', desc: 'Token with age >= 18 claim' },
-        { name: 'AgeAtLeast21', desc: 'Token with age >= 21 claim' },
-        { name: 'AdminRole', desc: 'Token with role = Admin claim' },
-        { name: 'AdminRoleAgeAtLeast21', desc: 'Token with age >= 21 and role = Admin claims' },
-        { name: 'UserNumberAtLeast20', desc: 'Token with UserNumber >= 20 claim' },
-        { name: 'UserNumberAtLeast20AgeAtLeast18', desc: 'Token with UserNumber >= 20 and age >= 18 claim' }
+        { name: 'EverybodyWithAToken', desc: 'Token with claim ApiAccess=IdApi1' },
+        { name: 'AgeAtLeast16', desc: 'Token with claims age >= 16 claim and ApiAccess=IdApi1' },
+        { name: 'AgeAtLeast18', desc: 'Token with claims age >= 18 claim and ApiAccess=IdApi1' },
+        { name: 'AgeAtLeast21', desc: 'Token with age >= 21 claim and ApiAccess=IdApi1' },
+        { name: 'AdminRole', desc: 'Token with role claim = Admin and ApiAccess=IdApi1' },
+        { name: 'AdminRoleAgeAtLeast21', desc: 'Token with age >= 21 and role = Admin claims and ApiAccess=IdApi1' },
+        { name: 'UserNumberAtLeast20', desc: 'Token with UserNumber >= 20 claim and ApiAccess=IdApi1' },
+        { name: 'UserNumberAtLeast20AgeAtLeast18', desc: 'Token with UserNumber >= 20 and age >= 18 claim and ApiAccess=IdApi1' }
       ],
       testApi: new TestApi(
         Paths.testApi,
