@@ -141,7 +141,7 @@ export class UserManager {
     return true;
   }
 
-  setRefreshStrategy(strategy) {
+  setRefreshStrategy(strategy, signInIf = true) {
 
     if(this.refreshStrategy == strategy) {
       return;
@@ -159,7 +159,20 @@ export class UserManager {
 
     localStorage.setItem('UserManger.RefreshStrategy', strategy);
     this.refreshStrategy = strategy;
-    this._silentSignInIfNeededAsync();
+    
+    if(signInIf) {
+
+      const strategyOnExpiringNeedsSignIn = this.accessTokenWillExpireSoon &&
+              this.refreshStrategy == RefreshStrategy.onExpiring;
+
+      const strategyOnExpiredNeedsSignIn = this.accessTokenExpired && (
+              this.refreshStrategy == RefreshStrategy.onExpired ||
+              this.refreshStrategy == RefreshStrategy.onExpiring);
+      
+      if(strategyOnExpiringNeedsSignIn || strategyOnExpiredNeedsSignIn) {
+        this._signInSilentAsync();
+      }
+    }
   }
 
   setClockSkew(clockSkew) {
@@ -169,7 +182,6 @@ export class UserManager {
     }
 
     this.mgr.settings._clockSkew = clockSkew;
-    // localStorage.setItem('UserManger.ClockSkew', clockSkew);
   }
 
   setUserLoadedCb(userLoadedCb) {
@@ -225,18 +237,6 @@ export class UserManager {
   
     if(this.refreshStrategy != RefreshStrategy.manualOnly &&
        (this.accessTokenWillExpireSoon || this.accessTokenExpired)) {
-
-      await this._signInSilentAsync();
-    }
-  }
-
-  async _silentSignInIfNeededAsync() {
-
-    if((this.accessTokenWillExpireSoon &&
-        this.refreshStrategy == RefreshStrategy.onExpiring) ||
-       (this.accessTokenExpired && 
-        (this.refreshStrategy == RefreshStrategy.onExpired ||
-         this.refreshStrategy == RefreshStrategy.onExpiring))) {
 
       await this._signInSilentAsync();
     }
