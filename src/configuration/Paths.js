@@ -48,19 +48,19 @@ export class Paths {
   }
 
   static get postLogoutRedirect() {
-    return `${this._getBaseUrlApp(false)}${process.env.BASE_URL}${process.env.VUE_APP_PAGE_POST_LOGOUT_RD}`;
+    return `${this._getBaseUrlApp(true)}${process.env.VUE_APP_PAGE_POST_LOGOUT_RD}`;
   }
 
   static get callbackRedirect() {
-    return `${this._getBaseUrlApp(false)}${process.env.BASE_URL}${process.env.VUE_APP_PAGE_CALLBACK_RD}`;
+    return `${this._getBaseUrlApp(true)}${process.env.VUE_APP_PAGE_CALLBACK_RD}`;
   }
 
   static get silentRenewRedirect() {
-    return `${this._getBaseUrlApp(false)}${process.env.BASE_URL}${process.env.VUE_APP_PAGE_SILENT_RENEW_RD}`;
+    return `${this._getBaseUrlApp(true)}${process.env.VUE_APP_PAGE_SILENT_RENEW_RD}`;
   }
 
   static get popupCallback() {
-    return `${this._getBaseUrlApp(false)}${process.env.BASE_URL}${process.env.VUE_APP_PAGE_POPUP_CALLBACK}`;
+    return `${this._getBaseUrlApp(true)}${process.env.VUE_APP_PAGE_POPUP_CALLBACK}`;
   }
 
   static get idServer() {
