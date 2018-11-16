@@ -48,7 +48,7 @@ export default {
         this.getObj('Last Name', this.registerData.lastName),
         this.getObj('Date of Birth', this.registerData.dateOfBirth),
         this.getObj('Role', this.registerData.role),
-        this.getObj('User Number', this.registerData.userNumber.toString()),
+        this.getObj('User Number', this.registerData.userNumber),
       ].filter(item => item != null);
     }
   },

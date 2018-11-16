@@ -67,15 +67,15 @@ router.beforeEach(async (to, from, next) => {
   if(to.name == 'credentials' || to.name == 'idapi1' || to.name == 'settings') {
     
     const nextMove = () => {
-      if(!store.getters['user/signedIn']) {
+      if(!store.getters['auth/signedIn']) {
         return next({ name: 'loginregisterinfo'});
       }
       return next();
     }
 
-    if(!store.getters['user/initialized']) {
+    if(!store.getters['auth/initialized']) {
 
-      const unWatchFn = store.watch(state => state.user.initialized, () => {
+      const unWatchFn = store.watch(state => state.auth.initialized, () => {
         nextMove();
         unWatchFn();
       });

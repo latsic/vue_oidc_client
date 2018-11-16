@@ -24,7 +24,7 @@ export default {
   },
   methods: {
     async signIn() {
-      await this.$store.dispatch('user/signIn');
+      await this.$store.dispatch('auth/signIn');
     }
   }
 }

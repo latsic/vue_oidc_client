@@ -91,7 +91,7 @@
           <v-select
               label="choose a user number"
               outline
-              :items="[0, 10, 20, 30, 40, 50]"
+              :items="['0', '10', '20', '30', '40', '50']"
               v-model="registerData.userNumber"
               >
             </v-select>
@@ -106,7 +106,7 @@
             :close-on-content-click="false"
             v-model="menu"
             :nudge-right="40"
-            :return-value.sync="dateOfBirth"
+            :return-value.sync="registerData.dateOfBirth"
             lazy
             transition="scale-transition"
             offset-y
@@ -117,15 +117,15 @@
               slot="activator"
               label="Date of Birth"
               outline
-              v-model="dateOfBirth"
+              v-model="registerData.dateOfBirth"
               append-icon="event"
               readonly
               >
             </v-text-field>
-            <v-date-picker v-model="dateOfBirth" no-title scrollable>
+            <v-date-picker v-model="registerData.dateOfBirth" no-title scrollable>
               <v-spacer></v-spacer>
               <v-btn flat color="primary" @click="menu = false">Cancel</v-btn>
-              <v-btn flat color="primary" @click="$refs.menu.save(dateOfBirth)">OK</v-btn>
+              <v-btn flat color="primary" @click="$refs.menu.save(registerData.dateOfBirth)">OK</v-btn>
             </v-date-picker>
           </v-menu>
         </v-flex>
@@ -144,19 +144,10 @@
               Register
             </v-btn>
             <app-spinner
-              v-if="showSpinner"
+              v-if="$store.getters['account/registering']"
               >
             </app-spinner>
-            
-            <p
-              v-if="error"
-              :style="{margin: 'auto 0px', color: 'red'}"
-              >
-              {{ error.message ? error.message : "Unknown Error" }}
-            </p>
-            
           </v-layout>
-          
 
           <v-btn
             @click="clear"
@@ -168,6 +159,16 @@
           </v-layout>
         </v-flex>
       </v-layout>
+      <div v-if="error">
+        <app-view-spacer></app-view-spacer>
+        <v-layout justify-center row wrap>
+          <p
+            :style="{margin: 'auto 0px', color: 'red'}"
+            >
+            {{ error.message ? error.message : "Unknown Error" }}
+          </p>
+        </v-layout>
+      </div>
 
     </v-form>
     <app-view-spacer></app-view-spacer>
@@ -176,12 +177,10 @@
 
 <script>
 
-import { RegisterData } from '@/models/RegisterData';
-import { register } from '@/backend/idserver/register';
-import { Paths } from '@/configuration/Paths';
 import Spinner from '@/components/common/Spinner';
 import ViewLayout from '@/components/layout/ViewLayout';
 import ViewSpacer from '@/components/layout/ViewSpacer';
+import { RegisterData } from '@/models/RegisterData';
 
 export default {
   components: {
@@ -192,12 +191,10 @@ export default {
   data() {
     return {
       formValid: false,
-      registerData: new RegisterData(),
-      dateOfBirth: '',
+      registerData: new RegisterData(),//this.registerDataStore,
       passwordRepeated: '',
       menu: false,
       showSpinner: false,
-      error: null,
       rules: {
         required: value => !!value || 'Required.',
         counter: value => value.length <= 20 || 'Max 20 characters',
@@ -208,34 +205,30 @@ export default {
       }
     }
   },
-  methods: {
+  computed: {
+    registerDataStore() {
+     return this.$store.getters['account/registerData'].clone();
+    },
     passwordMatch(){
       return this.passwordRepeated == this.registerData.password || 'Password does not match';
     },
-    register(){
-      this.showSpinner = true;
-      this.error = null;
-
-      this.registerData.dateOfBirth = this.dateOfBirth;
-
-      register(this.registerData, Paths.registerEndpoint)
-      .then((registeredData) => {
-        this.showSpinner = false;
-        this.$router.push({
-          name: 'registersuccessfull',
-          params: { registerData: registeredData}
-        });
-      })
-      .catch(error => {
-        this.error = error;
-      })
-      .finally(() => {
-        this.showSpinner = false;
-      });
+    error(){
+      return this.$store.getters['account/registerError'];
+    }
+  },
+  watch: {
+    registerDataStore(registerData) {
+     this.registerData = registerData.clone();
+    }
+  },
+  methods: {
+    async register(){
+      this.$store.dispatch('account/register', this.registerData.clone());
     },
     clear(){
-      this.error = null;
-      this.$refs.form.reset()
+      this.$store.dispatch('account/clearRegisterError');
+      this.$store.dispatch('account/clearRegisterData');
+      this.$refs.form.reset();
     },
     canClear(){
       return this.registerData.email ||
@@ -244,12 +237,21 @@ export default {
         this.registerData.passwordRepeated ||
         this.registerData.firstName ||
         this.registerData.lastName ||
-        this.registerData.selectedRole
+        this.registerData.selectedRole ||
+        this.registerData.dateOfBirth;
     },
     inputChanged(){
       this.formValid = this.$refs.form.validate();
-    }
+    },
+  },
+  mounted() {
+    this.registerData = this.registerDataStore;
+  },
+  beforeRouteLeave (to, from, next) {
+    this.$store.dispatch('account/setRegisterData', this.registerData.clone());
+    next();
   }
+
 }
 </script>
 

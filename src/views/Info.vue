@@ -79,7 +79,7 @@ export default {
   data() {
     return {
       idServerUrl: Paths.idServer,
-      idApiSwaggerUrl: Paths.swagger
+      idApiSwaggerUrl: Paths.swaggerIdApi1
     }
   }
 }

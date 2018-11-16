@@ -145,8 +145,6 @@ const actions = {
       await um.signInAsync();
     }
     catch(error) {
-      // eslint-disable-next-line no-console
-      console.log('[Store][User][Action][signIn][Error]', error);
       context.commit('setSignInRedirectError', { error });
       setTimeout(() => {
         // clear the error after a short while.
@@ -165,8 +163,6 @@ const actions = {
       await um.signOutAsync();
     }
     catch(error) {
-      // eslint-disable-next-line no-console
-      console.log('[Store][User][Action][signOut][Error]', error)
       actionHelperSignOut(context);
     }
   },

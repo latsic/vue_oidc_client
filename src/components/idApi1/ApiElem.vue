@@ -115,10 +115,12 @@ export default {
 
       resultPromise
       .then(json => {
+        this.initResult();
         this.apiResult.success = json;
         return true;
       })
       .catch(error => {
+        this.initResult();
         this.apiResult.error = error;
       })
       .finally(() => {

@@ -15,8 +15,8 @@ export class Paths {
     return this._appendSlashIf(process.env.VUE_APP_URL_IDSERVER, appendSlash);
   }
 
-  static _getBaseUrlIdUserServer(appendSlash = true) {
-    return this._appendSlashIf(process.env.VUE_APP_URL_IDUSERSERVER, appendSlash);
+  static _getBaseUrlIdUserApi(appendSlash = true) {
+    return this._appendSlashIf(process.env.VUE_APP_URL_IDUSERAPI, appendSlash);
   }
 
   static _getBaseUrlIdApi1(appendSlash = true) {
@@ -31,12 +31,12 @@ export class Paths {
     return `${this._getBaseUrlIdApi1()}${process.env.VUE_APP_PATH_IDAPI1_TOKEN_VALIDATION_CONFIG}`;
   }
 
-  static get swagger() {
+  static get swaggerIdApi1() {
     return `${this._getBaseUrlIdApi1()}${process.env.VUE_APP_PATH_IDAPI1_SWAGGER}`;
   }
 
-  static get registerEndpoint() {
-    return `${this._getBaseUrlIdUserServer()}${process.env.VUE_APP_PATH_IDUSERSERVER_REGISTER}`;
+  static get accountApi() {
+    return `${this._getBaseUrlIdUserApi()}${process.env.VUE_APP_PATH_IDUSERAPI_ACCOUNT}`;
   }
 
   static get tokenConfigApi() {
@@ -44,7 +44,7 @@ export class Paths {
   }
   
   static get userConfigApi() {
-    return `${this._getBaseUrlIdUserServer()}${process.env.VUE_APP_PATH_IDUSERSERVER_USER}`;
+    return `${this._getBaseUrlIdUserApi()}${process.env.VUE_APP_PATH_IDUSERAPI_USER}`;
   }
 
   static get postLogoutRedirect() {

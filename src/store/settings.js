@@ -96,12 +96,8 @@ const actions = {
     const promise1 = tokenValidationConfigIdApi1.get('clockSkew', false);
     promise1.then(clockSkewResponse => {
       context.commit('setClockSkew', { timeSpan: clockSkewResponse.timeSpan });
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][init][clockSkew][Success]', clockSkewResponse.timeSpan);
     })
     .catch(error => {
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][init][clockSkew][Error]', error);
       context.commit('setClockSkewInitFailed', { value: true });
       context.commit('setClockSkewError', { error });
     });
@@ -115,8 +111,6 @@ const actions = {
       context.commit('setAccessTokenLifeTime', { accessTokenLifeTime: accessTokenConfigResponse.lifeTimeSeconds });
     })
     .catch(error => {
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][init][accessTokenConfig][Error]', error);
       context.commit('setAccessTokenLifeTimeInitFailed', { value: true });
       context.commit('setAccessTokenLifeTimeError', { error });
     });
@@ -134,13 +128,11 @@ const actions = {
 
     const tokenValidationConfigIdApi1 =
       new TokenValidationConfigApi(Paths.tokenValidationConfigIdApi1,
-        () => context.dispatch('user/signInSilent', { onlyIfAccesTokenExpiringOrExpired: true }, { root: true}),
-        () => context.rootGetters['user/accessToken']);
+        () => context.dispatch('auth/signInSilentIfAsync', null, { root: true }),
+        () => context.rootGetters['auth/accessToken']);
 
     return tokenValidationConfigIdApi1.post('clockSkew', { timeSpan: payload.timeSpan })
     .then(clockSkewResponse => {
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][setClockSkew][Success]', clockSkewResponse.timeSpan);
       if(clockSkewResponse.timeSpan != payload.timeSpan) {
         context.commit('setClockSkew', { timeSpan: clockSkewResponse.timeSpan });
       }
@@ -152,8 +144,6 @@ const actions = {
       }
     })
     .catch(error => {
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][setClockSkew][Error]', error);
       context.commit('setClockSkew', { timeSpan: clockSkewValueBackUp });
       context.commit('setClockSkewError', { error });
       if(payload.resetErrorTimeMs && !context.getters['clockSkewInitFailed']) {
@@ -182,9 +172,6 @@ const actions = {
       'accessTokenConfig', OidcClientConfig.clientId,
       { lifeTimeSeconds: payload.accessTokenLifeTime }, false)
     .then(accessTokenConfigResponse => {
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][setAccessTokenLifeTime][accessTokenConfig][Error]', accessTokenConfigResponse.lifeTimeSeconds);
-      
       if(payload.accessTokenLifeTime != accessTokenConfigResponse.lifeTimeSeconds) {
         context.commit('setAccessTokenLifeTime', { accessTokenLifeTime: accessTokenConfigResponse.lifeTimeSeconds });
       }
@@ -196,8 +183,6 @@ const actions = {
       }
     })
     .catch(error => {
-      // eslint-disable-next-line no-console
-      console.log('[Store][Settings][setAccessTokenLifeTime][accessTokenConfig][Error]', error);
       context.commit('setAccessTokenLifeTime', { accessTokenLifeTime: accessTokenLifeTimeBackUp });
       context.commit('setAccessTokenLifeTimeError', { error });
       if(payload.resetErrorTimeMs && !context.getters['accessTokenLifeTimeInitFailed']) {

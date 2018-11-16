@@ -11,7 +11,7 @@
       :style="{
         color: expired ? colorExpiredC : colorNotExpiredC,
         transform: 'translate(-50%, -50%)'}"
-        @click="clicked"
+        @click="$emit('click')"
         >
         {{ iconName }}
     </v-icon>

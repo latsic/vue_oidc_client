@@ -15,5 +15,5 @@ new Vue({
 
 Vue.config.errorHandler = (error, vm, info) => {
   // eslint-disable-next-line no-console
-  console.log(error, vm, info);
+  console.error(error, vm, info);
 }

@@ -69,7 +69,13 @@ export class UserManager {
   }
 
   async init() {
-    this.user = await this.mgr.getUser();
+    const user = await this.mgr.getUser();
+    if(user) {
+      this._throwIfError(user);
+      this.accessTokenWillExpireSoon = user.expires_in < OidcClientConfig.accessTokenExpiringNotificationTime;
+      this.accessTokenExpired = user.expires_in < 0;
+      this.user = user;
+    }
   }
 
   getOidcUser() {
@@ -205,7 +211,7 @@ export class UserManager {
   }
 
   setAccessTokenExpiringCb(accessTokenExpiringCb) {
-    this.accessTokenExpiring = accessTokenExpiringCb;
+    this.accessTokenExpiringCb = accessTokenExpiringCb;
   }
 
   async signInAsync() {
@@ -246,11 +252,13 @@ export class UserManager {
 
     if(this.signInSilentCb) this.signInSilentCb();
 
+    const timeStart = new Date();
+
     try {
       this.user = await this.mgr.signinSilent();
       this._throwIfError(this.user);
       // eslint-disable-next-line no-console
-      console.log('[UserManager][signInSilent][success][user]', this.user);
+      console.log(`[UserManager][signInSilent][success][${new Date() - timeStart}ms]`, this.user);
       this.accessTokenWillExpireSoon = false;
       this.accessTokenExpired = false;
       if(this.signedInSilentCb) this.signedInSilentCb(null);
@@ -258,7 +266,7 @@ export class UserManager {
     }
     catch(error) {
       // eslint-disable-next-line no-console
-      console.log('[UserManager][signInSilent][error][user]', error);
+      console.log(`[UserManager][signInSilent][error][${new Date() - timeStart}ms]`, error);
       this.signedInSilentCb(error);
       throw error;
     }
@@ -293,6 +301,7 @@ export class UserManager {
       if(this.accessTokenExpiredCb) this.accessTokenExpiredCb();
       switch(this.refreshStrategy) {
         case RefreshStrategy.onExpired:
+        case RefreshStrategy.onExpiring:
           this.signInSilentAsync();
           break;
         default:

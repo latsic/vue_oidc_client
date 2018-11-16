@@ -8,5 +8,13 @@ export class RegisterData {
   lastName = '';
   password = '';
   role = '';
-  userNumber = -1
+  userNumber = '';
+
+  clone() {
+    const registerData = new RegisterData();
+    for(const key of Object.keys(registerData)) {
+      registerData[key] = this[key];
+    }
+    return registerData;
+  }
 }

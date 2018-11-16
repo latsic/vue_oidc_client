@@ -5,7 +5,7 @@ export class UserLoginState {
   signedIn = false;
   silentSignInOngoing = false;
   silentSignInError = null;
-  accessTokenExpiring = null;
+  accessTokenExpiring = false;
   accessTokenExpired = false;
   accessTokenIssueTime = null;
   accessTokenExpiresInSeconds = null;

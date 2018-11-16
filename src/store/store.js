@@ -1,12 +1,15 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import user from '@/store/user';
+import auth from '@/store/auth';
 import settings from '@/store/settings';
+import account from '@/store/account';
+import claims from '@/store/claims';
 
 Vue.use(Vuex)
 
 export default new Vuex.Store({
+  strict: true,
   state: {
     
   },
@@ -17,7 +20,9 @@ export default new Vuex.Store({
 
   },
   modules: {
-    user,
+    auth,
+    account,
+    claims,
     settings
   }
 });

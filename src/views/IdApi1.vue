@@ -10,24 +10,15 @@
         and how the endpoint is secured. The endpoint can check the claims
         of the user by inspecting the access token (if any).
       </p>
+      <p class="text-xs-left">
+        An access token can expire, <router-link :to="'settings'">here
+        </router-link> it can be configured how such cases are handled.
+      </p>
     </div>
 
     <app-view-spacer marginBottom="0.5rem"></app-view-spacer>
 
-    <div class="text-xs-left" :style="{position: 'relative'}">
-      <slot name="infobar" />
-        
-      <div 
-          :style="{position: 'absolute', top: '50%', left: '95%' }"
-          >
-          <app-renew-action-item
-            :renewing="silentSignInOngoing"
-            :expired="expired"
-            :clicked="renewToken"
-            >
-          </app-renew-action-item>
-        </div>
-    </div>
+    <slot name="tokeninfoIdApi1" />
 
     <app-view-spacer marginTop="0.5rem"></app-view-spacer>
 
@@ -46,17 +37,17 @@
 
 import { TestApi } from '@/backend/IdApi1/TestApi';
 import { Paths } from '@/configuration/Paths'
-import ApiElem from '@/components/ApiElem';
+import ApiElem from '@/components/idApi1/ApiElem';
 import ViewLayout from '@/components/layout/ViewLayout';
 import ViewSpacer from '@/components/layout/ViewSpacer';
-import RenewActionIcon from '@/components/common/RenewActionIcon';
+// import RenewActionIcon from '@/components/common/RenewActionIcon';
 
 export default {
   components: {
     'appApiElem': ApiElem,
     'appViewLayout': ViewLayout,
     'appViewSpacer': ViewSpacer,
-    'appRenewActionItem': RenewActionIcon
+    // 'appRenewActionItem': RenewActionIcon
   },
   props: {
     tokenInfo: {
@@ -79,23 +70,23 @@ export default {
       ],
       testApi: new TestApi(
         Paths.testApi,
-        () => this.$store.dispatch('user/signInSilentIfAsync'),
-        () => this.$store.getters['user/accessToken']),
-      idApiSwaggerUrl: Paths.swagger
+        () => this.$store.dispatch('auth/signInSilentIfAsync'),
+        () => this.$store.getters['auth/accessToken']),
+      idApiSwaggerUrl: Paths.swaggerIdApi1
     }
   },
   computed: {
     silentSignInOngoing() {
-      return this.$store.getters['user/userLoginState'].silentSignInOngoing;
+      return this.$store.getters['auth/userLoginState'].silentSignInOngoing;
     },
     expired() {
-      return this.$store.getters['user/userLoginState'].accessTokenExpired;
+      return this.$store.getters['auth/userLoginState'].accessTokenExpired;
     }
   },
   methods: {
     async renewToken() {
       try {
-        await this.$store.dispatch('user/signInSilent');
+        await this.$store.dispatch('auth/signInSilent');
         this.init();
       }
       catch(error) {

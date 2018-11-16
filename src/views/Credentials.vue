@@ -75,12 +75,12 @@
         <div 
           :style="{position: 'absolute', top: '50%', left: '95%' }"
           >
-          <app-renew-action-item
+          <app-renew-action-icon
             :renewing="silentSignInOngoing"
             :expired="accessTokenExpiresInSeconds < 0"
-            :clicked="renewToken"
+            @click="renewToken"
             >
-          </app-renew-action-item>
+          </app-renew-action-icon>
         </div>
       </div>
       
@@ -105,7 +105,6 @@
 
 <script>
   
-// import { UserManager } from '@/backend/idserver/UserManager';
 import ViewLayout from '@/components/layout/ViewLayout';
 import ViewSpacer from '@/components/layout/ViewSpacer';
 import Spinner from '@/components/common/Spinner';
@@ -134,7 +133,7 @@ export default {
     'appViewSpacer': ViewSpacer,
     'textLine': TextLine,
     'appSpinner': Spinner,
-    'appRenewActionItem': RenewActionIcon
+    'appRenewActionIcon': RenewActionIcon
   },
   data() {
     return {
@@ -159,13 +158,13 @@ export default {
   },
   computed: {
     user() {
-      return this.$store.getters['user/oidcUser'];
+      return this.$store.getters['auth/oidcUser'];
     },
     silentSignInOngoing() {
-      return this.$store.getters['user/userLoginState'].silentSignInOngoing;
+      return this.$store.getters['auth/userLoginState'].silentSignInOngoing;
     },
     silentSignInError() {
-      return this.$store.getters['user/userLoginState'].silentSignInError;
+      return this.$store.getters['auth/userLoginState'].silentSignInError;
     },
     accessTokenExpireNotificationTime() {
       return OidcClientConfig.accessTokenExpiringNotificationTime;
@@ -187,7 +186,7 @@ export default {
   methods: {
     async renewToken() {
       try {
-        await this.$store.dispatch('user/signInSilent');
+        await this.$store.dispatch('auth/signInSilent');
         this.init();
       }
       catch(error) {
@@ -218,7 +217,7 @@ export default {
       }
       this.accessTokenExpiresAt = this.convertToLocalDateString(user.expires_at);
       
-      const issuedAtInSeconds = this.$store.getters['user/accessTokenIssueTime'];
+      const issuedAtInSeconds = this.$store.getters['auth/accessTokenIssueTime'];
       if(issuedAtInSeconds) {
         this.accessTokenIssuedAt = this.convertToLocalDateString(issuedAtInSeconds)
       }
@@ -233,21 +232,21 @@ export default {
       this.setIdTokenClaims(this.user);
       this.setUserInfo(this.user);
 
-      if(!this.$store.getters['user/signedIn']) {
+      if(!this.$store.getters['auth/signedIn']) {
         return;
       }
-      this.userName = this.$store.getters['user/userName'];
+      this.userName = this.$store.getters['auth/userName'];
       
       this.otherAttributes = [];
       const attributeNames = ['email', 'role', 'birthdate', 'UserNumber'];
       attributeNames.forEach(name => {
-        const value = this.$store.getters['user/userAttribute'](name);
+        const value = this.$store.getters['auth/userAttribute'](name);
         if(value) this.otherAttributes.push({name, value});
       });
 
       const updateLoginState = () => {
-        this.$store.dispatch('user/updateLoginState');
-        this.accessTokenExpiresInSeconds = this.$store.getters['user/accessTokenExpiresInSeconds'];
+        this.$store.dispatch('auth/updateLoginState');
+        this.accessTokenExpiresInSeconds = this.$store.getters['auth/accessTokenExpiresInSeconds'];
       }
 
       if(this.intervalFunc) clearInterval(this.intervalFunc);

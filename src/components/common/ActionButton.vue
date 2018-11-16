@@ -70,8 +70,6 @@
 
 <script>
 
-// const iconNames = ['done', 'error', 'sync', 'none']
-
 export default {
   props: {
     buttonText: {

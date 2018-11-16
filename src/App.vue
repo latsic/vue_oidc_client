@@ -9,21 +9,30 @@
     <div id="nav">
            
       <app-navbar
-        :userName="$store.getters['user/userName']"
-        :isSignedIn="$store.getters['user/signedIn']"
+        :userName="$store.getters['auth/userName']"
+        :isSignedIn="$store.getters['auth/signedIn']"
         :signIn="signInAsync"
         :signOut="signOutAsync"
-        :signInError="$store.getters['user/signInRedirectError']"
+        :signInError="$store.getters['auth/signInRedirectError']"
         >
       </app-navbar>
     </div>
     
     <router-view>
       <app-access-token-info
-        :userLoginState="$store.getters['user/userLoginState']"
-        :requestUpdate="updateLoginState"
+        :userLoginState="$store.getters['auth/userLoginState']"
         :clockSkew="this.$store.getters['settings/clockSkew']"
-        slot="infobar"
+        @renewToken="signInSilent"
+        @requestLoginStateUpdate="updateLoginState"
+        slot="tokeninfoIdApi1"
+        >
+      </app-access-token-info>
+      <app-access-token-info
+        :userLoginState="$store.getters['auth/userLoginState']"
+        :clockSkew="300"
+        @renewToken="signInSilent"
+        @requestLoginStateUpdate="updateLoginState"
+        slot="tokeninfoCommon"
         >
       </app-access-token-info>
     </router-view>
@@ -37,8 +46,8 @@
 </template>
 
 <script>
-  import Navbar from '@/components/Navbar';
-  import AccessTokenInfo from '@/components/AccessTokenInfo';
+  import Navbar from '@/components/navigation/Navbar';
+  import AccessTokenInfo from '@/components/common/AccessTokenInfo';
   
   export default {
     components: {
@@ -51,17 +60,25 @@
     },
     methods: {
       async signInAsync() {
-        await this.$store.dispatch('user/signIn');
+        await this.$store.dispatch('auth/signIn');
       },
       async signOutAsync() {
-        await this.$store.dispatch('user/signOut');
+        await this.$store.dispatch('auth/signOut');
       },
       updateLoginState() {
-        this.$store.dispatch('user/updateLoginState');
+        this.$store.dispatch('auth/updateLoginState');
+      },
+      async signInSilent() {
+        try {
+          await this.$store.dispatch('auth/signInSilent');
+        }
+        catch(error) {
+          // Nothing to do. Error is repored elsewhere.
+        }
       }
     },
     created() {
-      this.$store.dispatch('user/init');
+      this.$store.dispatch('auth/init');
       this.$store.dispatch('settings/init')
     }
   };
