@@ -13,11 +13,11 @@
       </p>
       <p class="text-xs-left">
         One backend this app talks to is an <a :href="idServerUrl">authorization server</a> implemented with <a href="https://en.wikipedia.org/wiki/ASP.NET_Core">
-        Asp.net Core</a> and <a href="http://docs.identityserver.io">Identity Server 4</a>.
+        ASP.NET Core</a> and <a href="http://docs.identityserver.io">Identity Server 4</a>.
       </p>
 
       <p class="text-xs-left">
-        The technologies mentioned above enable, among others, features like 
+        The technologies mentioned above allows for, among others, features like 
         <a href="https://en.wikipedia.org/wiki/Single_sign-on">Single Sign-On (SSO)</a>, 
         login with external providers and <a href="https://en.wikipedia.org/wiki/Access_token">
         Access Control for APIs</a>.
@@ -27,7 +27,7 @@
         The purpose of this app is to learn about the involved technologies. There is also
         a <a :href="idApiSwaggerUrl">webapi</a> running which provides endpoints to test
         access to api resources. These endpoints require various kinds of
-        <a href="https://en.wikipedia.org/wiki/Claims-based_identity">authorization</a>. For
+        <a href="https://en.wikipedia.org/wiki/Claims-based_identity">authorization</a>, for
         example the age of a user or the role of a user. If you are logged in, you can try it
         out <router-link :to="{name: 'idapi1'}">here</router-link>.
       </p>
