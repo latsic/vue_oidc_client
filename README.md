@@ -36,6 +36,10 @@ To test access to api resources, see <a href="https://github.com/latsic/idApi1.g
 </p>
 
 <p align="center">
+  <img width="460" src="./app_screenshot_settings.jpg">
+</p>
+
+<p align="center">
   <img width="460" src="./app_screenshot_credentials.jpg">
 </p>
 
